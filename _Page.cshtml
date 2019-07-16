@@ -1,0 +1,184 @@
+﻿@{
+/*傳入Model範例說明
+******************
+TotalCount = model.TotalCount                   總資料筆數
+PerPageCount = query.PerPageCount               每頁筆數
+CurrentPage = query.CurrentPage                 目前頁數(0開始)
+DataUrl = Url.Action(RouteData.Values["action"].ToString(), RouteData.Values["controller"]);    Ajax取資料Action
+QueryObjJson = query.QueryObjJson               目前搜尋條件
+AjaxDivID = "div_AgentList"                     Ajax顯示資料div
+******************/
+}
+
+@model Models.PageViewModel
+
+@{
+
+    var totalPage = Math.Ceiling((double)Model.TotalCount / Model.PerPageCount);
+    var perPageCount = Model.PerPageCount;
+    var currentPage = Model.CurrentPage;
+    var pageNumberCss = string.Empty;
+    var dataUrl = Model.DataUrl;
+    var queryObjJson = Model.QueryObjJson;
+    var ajaxDivID = Model.AjaxDivID;
+    var pageDDLID = "pageddl_" + ajaxDivID;
+}
+
+<ul class="pagination pgnt"
+    data-dataurl="@dataUrl"
+    data-queryobjjson="@queryObjJson"
+    data-ajaxdivid="@ajaxDivID"
+    data-pageddlid="@pageDDLID"
+    data-totalpage="@totalPage">
+
+    <!-- 上一頁 -->
+    @if (currentPage > 0 && totalPage > 0)
+    {
+        <li class="prev">
+            <a onclick="goPage(@(currentPage-1))"> <i class="fa fa-angle-left"></i> </a>
+        </li>
+    }
+
+    <!-- 第一頁 -->
+    @if (totalPage >= 1)
+    {
+        pageNumberCss = (currentPage == 0) ? "active" : string.Empty;
+        <li class="@pageNumberCss">
+            <a onclick="goPage(0)"> 1 </a>
+        </li>
+    }
+
+    <!-- 數字頁籤 -->
+    @if (totalPage > 1)
+    {
+        if (totalPage < 8)
+        {
+            for (var page = 1; page < totalPage - 1; page++)
+            {
+                pageNumberCss = (currentPage == page) ? "active" : string.Empty;
+                <li class="@pageNumberCss">
+                    <a onclick="goPage(@page)">@(page + 1)</a>
+                </li>
+            }
+        }
+        else
+        {
+            <!-- 開始... -->
+            if (currentPage >= 4)  //第6頁
+            {
+                <li><a class="pages" href="#">...</a></li>
+            }
+
+            for (var page = currentPage - 2; page <= currentPage + 2; page++)
+            {
+                if (page > 0 && page < totalPage - 1)
+                {
+                    pageNumberCss = (currentPage == page) ? "active" : string.Empty;
+                    <li class="@pageNumberCss">
+                        <a onclick="goPage(@page)">@(page + 1)</a>
+                    </li>
+                }
+            }
+            <!-- 最後... -->
+            if (currentPage < totalPage - 4)    //倒數第6頁
+            {
+                <li><a class="pages" href="#">...</a></li>
+            }
+        }
+    }
+
+    <!-- 最後一頁 -->
+    @if (totalPage > 1)
+    {
+        pageNumberCss = (currentPage == totalPage - 1) ? "active" : string.Empty;
+        <li class="@pageNumberCss">
+            <a onclick="goPage(@totalPage - 1)"> @totalPage </a>
+        </li>
+    }
+
+    <!-- 下一頁 -->
+    @{
+        if ((currentPage + 1) < totalPage)
+        {
+            <li class="next"><a onclick="goPage(@(currentPage+1))"> <i class="fa fa-angle-right"></i> </a></li>
+        }
+    }
+
+    <!-- Input頁數&每頁幾筆 -->
+    @if (totalPage > 0)
+    {
+        <li>
+            <label class="pagerlabel">
+                第<input type="text" class="ip_page" value="@(currentPage + 1)" onblur="inputGoPage(value.replace(/[^\d]/g, ''), @currentPage)">頁 每頁
+                <select class="portlet-title-select category-ddl" id="@pageDDLID" onchange="PageChangeFunc(this.value)">
+                    <option value="2" @(perPageCount == 2 ? "selected" : string.Empty)>2</option>
+                    <option value="10" @(perPageCount == 10 ? "selected" : string.Empty)>10</option>
+                    <option value="15" @(perPageCount == 15 ? "selected" : string.Empty)>15</option>
+                    <option value="20" @(perPageCount == 20 ? "selected" : string.Empty)>20</option>
+                    <option value="30" @(perPageCount == 30 ? "selected" : string.Empty)>30</option>
+                    <option value="50" @(perPageCount == 50 ? "selected" : string.Empty)>50</option>
+                </select>
+                /共<strong>@Model.TotalCount</strong>筆
+            </label>
+        </li>
+    }
+</ul>
+
+<script>
+    function getPerPage() {
+        let pageddl = $(event.target).parents("ul").data("pageddlid");
+        var perPage = $("#" + pageddl + " option:selected").val();
+        if (perPage === undefined) {
+            perPage = 10;
+        }
+
+        //console.log(pageddl);
+        return perPage;
+    }
+
+    function renderTable(page, perPage) {
+
+        let renderPath = $(event.target).parents("ul").data("dataurl");
+        let ajaxdiv = $(event.target).parents("ul").data("ajaxdivid");
+        let queryObj = $(event.target).parents("ul").data("queryobjjson");
+
+        queryObj.PageNumber = page;
+        queryObj.RecordCount = perPage;
+
+        $.ajax({
+            url: renderPath,
+            type: "GET",
+            data: queryObj,
+            success: function (result) {
+                if (result) {
+                    $("#" + ajaxdiv).html(result);
+                } else {
+                    console.log('can\'t get result from server.');
+                }
+            },
+            error: function (xhr) {
+                console.log('error: ', xhr);
+            }
+        });
+    }
+
+    function goPage(val) {
+        perPage = getPerPage();
+        renderTable(val, perPage)
+    }
+
+    function inputGoPage(goPage, curPage) {
+        let totalPage = $(event.target).parents("ul").data("totalpage");
+        if (goPage === '' || goPage > totalPage || goPage === curPage) {
+            $(event.target).val(curPage + 1); //顯示+1
+        } else {
+            perPage = getPerPage();
+            renderTable(goPage - 1, perPage); //資料頁數-1
+        }
+    }
+
+    //分頁下拉選單
+    function PageChangeFunc(val) {
+        renderTable(0, val);
+    }
+</script>

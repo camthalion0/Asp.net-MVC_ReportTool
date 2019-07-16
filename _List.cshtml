@@ -1,0 +1,120 @@
+﻿@using System.Reflection
+@using Newtonsoft.Json;
+@using Models
+@model Models.PageViewModel
+
+@{
+/***Hint*** 此頁面會依據存於ViewBag中的view model(需繼承IViewModel)內容輸出表頭及列表
+
+    - 若不須翻頁功能帶new PageViewModel()即可
+    - model.PerPageCount = query.RecordCount;
+    - model.CurrentPage = query.PageNumber;
+    - model.DataUrl = Url.Action(RouteData.Values["action"].ToString(), RouteData.Values["controller"]);
+    - model.QueryObjJson = JsonConvert.SerializeObject(query);
+    - model.AjaxDivID = "div_Loglist"; 指定Ajax顯示的view，同頁面多個報表時可自訂
+
+    - ViewBag.TableData: (List<列表資料ViewModel>) 主要資料表
+    - ViewBag.Table1Data: (List<列表1資料ViewModel>) 第二資料表
+    - ViewBag.Header: (string[])列表Header
+    - ViewBag.ExcelQueryModel: (ExcelQueryModel<T>)Excel匯出資料用，若為null則無匯出Excel功能
+ */
+}
+
+<div id="div_Loglist">
+    @if (!string.IsNullOrEmpty(ViewBag.ErrMessage))
+    {
+        <div class="alert alert-danger alert-dismissable">
+            <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
+            <strong>@ViewBag.ErrMessage .</strong>
+        </div>
+    }
+    else
+    {
+        var tableData = ViewBag.TableData;
+        var table1Data = ViewBag.table1Data;
+        var titleList = (List<string>)ViewBag.Header ?? new List<string>();
+        var excelQueryModel = ViewBag.ExcelQueryModel;
+
+        //顯示匯出excel按鈕
+        if (excelQueryModel != null)
+        {
+            var modeljson = JsonConvert.SerializeObject(excelQueryModel);
+
+            <div class="portlet-body padding-lef-30 util-btn-margin-bottom-5 portlet-body-overflow-y-auto noY bonus_a7">
+                <div class="pull-right">
+                    <button type="button" class="btn green " onclick='exportLogListExcel(@modeljson)'>
+                        <i class="fa fa-file-excel-o" aria-hidden="true"></i> 匯出Excel
+                    </button>
+                </div>
+            </div>
+        }
+        <table class="table table-striped table-bordered table-advance table-hover">
+            <thead>
+                <tr>
+                    @foreach (var title in titleList)
+                    {
+                        <th class="text-center">@title</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.TotalCount == 0 || tableData == null)
+                {
+                    <tr>
+                        <!-- header欄位數 -->
+                        <td colspan='@titleList.Count()'>
+                            <div class="border-grey m-bordered">
+                                <i class="fa fa-exclamation-circle iconEX"></i> <span>沒有資料</span>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    // view model中依序取屬性值
+                    foreach (var data in tableData)
+                    {
+                        <tr>
+                            @{
+                                var properties = data.GetType().GetProperties();
+                                foreach (PropertyInfo property in properties)
+                                {
+                                    <td class="aC" style="white-space:normal;">@Html.Raw(property.GetValue(data))</td>
+                                }
+                            }
+                        </tr>
+                    }
+                }
+                @if (table1Data != null)    //顯示第二資料表
+                {
+                    foreach (var data1 in table1Data)
+                    {
+                        <tr>
+                            @{
+                                var properties = data1.GetType().GetProperties();
+                                foreach (PropertyInfo property in properties)
+                                {
+                                    <td class="aC" style="white-space:normal;">@Html.Raw(property.GetValue(data1))</td>
+                                }
+                            }
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+		@if (Model.TotalCount != null)   //顯示分頁
+		{
+			<div>
+				@Html.Partial("_Page", Model)
+			</div>
+		}
+    }
+</div>
+<script>
+    function exportLogListExcel(modeljson) {
+        let actionPath = modeljson.ExportActionPath;
+        let querymodelstr = JSON.stringify(modeljson);
+
+        window.location.href = actionPath + "?querymodelstr=" + querymodelstr;
+    }
+</script>

@@ -1,0 +1,11 @@
+﻿@model Models.SampleQueryModel
+
+@using (Html.BeginForm("Index", "Sample", FormMethod.Get, new { @id = "form_search" }))
+{
+	<div class="table-responsive" id="div_SampleList">
+		<!--列表 -->
+		@Html.Action("_ReportList", "Sample", Model)
+	</div>
+	
+	<button type="submit">Search</button>
+}
